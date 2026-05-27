@@ -1,0 +1,109 @@
+Original then summary then admin specific way below.
+
+logical_db=> SET search_path TO public;
+SET
+logical_db=> CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(20) DEFAULT 'user',
+);  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+ERROR:  no schema has been selected to create in
+LINE 1: CREATE TABLE IF NOT EXISTS users (
+                                   ^
+ERROR:  no schema has been selected to create in
+LINE 1: CREATE TABLE IF NOT EXISTS posts (
+                                   ^
+ERROR:  no schema has been selected to create in
+LINE 1: CREATE TABLE IF NOT EXISTS comments (
+                                   ^
+logical_db=>
+
+The issue is that the **`public` schema doesn't exist** anymore since you deleted it. You need to **recreate the schema first** before creating tables in it.
+
+### ✅ Solution: Create the Schema
+
+Run these commands in order:
+
+```sql
+-- Create the public schema
+CREATE SCHEMA public;
+
+-- Set it as default
+SET search_path TO public;
+
+-- Now create your tables
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(20) DEFAULT 'user',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS posts (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS comments (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    post_id INTEGER REFERENCES posts(id),
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+-- Grant all privileges
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO logic_user;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO logic_user;
+GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO logic_user;
+
+-- Set default privileges for future tables
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO logic_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO logic_user;
+
+-- Make sure logic_user owns the tables
+ALTER TABLE users OWNER TO logic_user;
+ALTER TABLE posts OWNER TO logic_user;
+ALTER TABLE comments OWNER TO logic_user;
+
+
+
+
+My database:(This:"public | photos   | table | postgres
+ public | posts    | table | logic_user
+ public | users    | table | logic_user" is what i got, what of the columns?)"   "photos_url_not_null" NOT NULL "url"
+    "photos_created_at_not_null" NOT NULL "created_at"
+Access method: heap &&    "comments_id_not_null" NOT NULL "id"
+    "comments_content_not_null" NOT NULL "content"
+Access method: heap &&    "users_email_not_null" NOT NULL "email"
+    "users_password_not_null" NOT NULL "password"
+Access method: heap &&     "posts_title_not_null" NOT NULL "title"
+    "posts_content_not_null" NOT NULL "content"
+Access method: heap".
+
+
+sudo -u postgres psql -d logical_db << EOF
+
+-- Ensure role column exists
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';
+
+-- Create admin user (if needed)
+-- INSERT INTO users (email, password, role) VALUES ('admin@example.com', 'admin123', 'admin');
+
+-- Update existing user to admin (replace with actual email)
+-- UPDATE users SET role = 'admin' WHERE email = 'llybisetga@gmail.com';
+
+-- Display current admin users
+SELECT id, email, role FROM users WHERE role = 'admin';
+
+EOF
+
+echo "Database setup complete!"

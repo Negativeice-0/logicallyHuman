@@ -1,0 +1,638 @@
+<!-- Now
+// In registration.php - Only first user becomes admin
+$role = isFirstUser() ? 'admin' : 'user';
+
+Then if don't want admin
+// In registration.php - All users start as regular users
+$role = 'user';
+
+// Then admins can promote others through admin panel
+// This is what most platforms use (Reddit, Facebook, etc.)
+
+
+
+## 🔐 **ADMIN ACCESS CONTROL OPTIONS**
+
+
+### ** Multiple Admins (Recommended)**
+```php
+// In registration.php - All users start as regular users
+$role = 'user';
+
+// Then admins can promote others through admin panel
+// This is what most platforms use (Reddit, Facebook, etc.)
+```
+
+
+--->
+
+
+<?php
+require_once "config.php";
+requireAdmin(); // This now uses named placeholders internally
+
+$db = getDB();
+$error = "";
+$success = "";
+
+// Handle post deletion - NAMED PLACEHOLDER REFACTOR: :post_id
+if (isset($_POST["delete_post"])) {
+    $post_id = $_POST["post_id"];
+    try {
+        // Delete comments first - NAMED PLACEHOLDER: :post_id
+        $stmt = $db->prepare("DELETE FROM comments WHERE post_id = :post_id");
+        $stmt->execute([":post_id" => $post_id]);
+
+        // Delete post - NAMED PLACEHOLDER: :post_id
+        $stmt = $db->prepare("DELETE FROM posts WHERE id = :post_id");
+        $stmt->execute([":post_id" => $post_id]);
+        $success = "Post deleted successfully!";
+    } catch (PDOException $e) {
+        $error = "Error deleting post: " . $e->getMessage();
+    }
+}
+
+// Handle user management - NAMED PLACEHOLDER REFACTOR: :role, :user_id
+if (isset($_POST["update_user_role"])) {
+    $user_id = $_POST["user_id"];
+    $new_role = $_POST["role"];
+
+    // Prevent self-demotion
+    if ($user_id == $_SESSION["user_id"] && $new_role != "admin") {
+        $error = "You cannot remove your own admin privileges!";
+    } else {
+        try {
+            $stmt = $db->prepare(
+                "UPDATE users SET role = :role WHERE id = :user_id",
+            );
+            $stmt->execute([":role" => $new_role, ":user_id" => $user_id]);
+            $success = "User role updated successfully!";
+
+            // Update session if current user updated themselves
+            if ($user_id == $_SESSION["user_id"]) {
+                $_SESSION["role"] = $new_role;
+            }
+        } catch (PDOException $e) {
+            $error = "Error updating user: " . $e->getMessage();
+        }
+    }
+}
+
+// Handle user deletion - NAMED PLACEHOLDER REFACTOR: :user_id
+if (isset($_POST["delete_user"])) {
+    $user_id = $_POST["user_id"];
+
+    // Prevent self-deletion
+    if ($user_id == $_SESSION["user_id"]) {
+        $error = "You cannot delete your own account!";
+    } else {
+        try {
+            // Start transaction
+            $db->beginTransaction();
+
+            // Delete user's comments - NAMED PLACEHOLDER: :user_id
+            $stmt = $db->prepare(
+                "DELETE FROM comments WHERE user_id = :user_id",
+            );
+            $stmt->execute([":user_id" => $user_id]);
+
+            // Delete user's posts - NAMED PLACEHOLDER: :user_id
+            $stmt = $db->prepare("DELETE FROM posts WHERE user_id = :user_id");
+            $stmt->execute([":user_id" => $user_id]);
+
+            // Delete user - NAMED PLACEHOLDER: :user_id
+            $stmt = $db->prepare("DELETE FROM users WHERE id = :user_id");
+            $stmt->execute([":user_id" => $user_id]);
+
+            $db->commit();
+            $success = "User deleted successfully!";
+        } catch (PDOException $e) {
+            $db->rollBack();
+            $error = "Error deleting user: " . $e->getMessage();
+        }
+    }
+}
+
+// Handle comment deletion - NAMED PLACEHOLDER REFACTOR: :comment_id
+if (isset($_POST["delete_comment"])) {
+    $comment_id = $_POST["comment_id"];
+    try {
+        $stmt = $db->prepare("DELETE FROM comments WHERE id = :comment_id");
+        $stmt->execute([":comment_id" => $comment_id]);
+        $success = "Comment deleted successfully!";
+    } catch (PDOException $e) {
+        $error = "Error deleting comment: " . $e->getMessage();
+    }
+}
+
+// Get all users (no parameters needed)
+$users_stmt = $db->query(
+    "SELECT id, username, email, role, created_at FROM users ORDER BY created_at DESC",
+);
+$users = $users_stmt->fetchAll();
+
+// Get all posts with author info (no parameters needed)
+$posts_stmt = $db->query("
+    SELECT p.*, u.username as author_name
+    FROM posts p
+    JOIN users u ON p.user_id = u.id
+    ORDER BY p.created_at DESC
+");
+$posts = $posts_stmt->fetchAll();
+
+// Get all comments with user and post info (no parameters needed)
+$comments_stmt = $db->query("
+    SELECT c.*, u.username, p.title as post_title
+    FROM comments c
+    JOIN users u ON c.user_id = u.id
+    JOIN posts p ON c.post_id = p.id
+    ORDER BY c.created_at DESC
+");
+$comments = $comments_stmt->fetchAll();
+
+// Statistics (no parameters needed)
+$stats_stmt = $db->query("
+    SELECT
+        (SELECT COUNT(*) FROM users) as total_users,
+        (SELECT COUNT(*) FROM posts) as total_posts,
+        (SELECT COUNT(*) FROM comments) as total_comments,
+        (SELECT COUNT(*) FROM users WHERE role = 'admin') as admin_users
+");
+$stats = $stats_stmt->fetch();
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Logical Human</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .admin-container {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 2rem;
+            min-height: 100vh;
+        }
+
+        .admin-sidebar {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 2rem 1rem;
+            border-radius: 12px;
+            height: fit-content;
+            position: sticky;
+            top: 100px;
+        }
+
+        .admin-sidebar nav {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .admin-sidebar a {
+            padding: 12px 15px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            color: var(--netflix-silver-muted);
+        }
+
+        .admin-sidebar a:hover,
+        .admin-sidebar a.active {
+            background: var(--netflix-red);
+            color: white;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+            border-left: 4px solid var(--netflix-red);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--netflix-red);
+            display: block;
+        }
+
+        .stat-label {
+            color: var(--netflix-silver-muted);
+            font-size: 0.9rem;
+        }
+
+        .admin-section {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .data-table th {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--netflix-red);
+            font-weight: 600;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-primary {
+            background: var(--netflix-red);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--netflix-red-dark);
+        }
+
+        .role-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .role-admin {
+            background: var(--netflix-red);
+            color: white;
+        }
+
+        .role-user {
+            background: var(--netflix-silver-darker);
+            color: white;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .alert-success {
+            background: rgba(40, 167, 69, 0.2);
+            border: 1px solid #28a745;
+            color: #28a745;
+        }
+
+        .alert-error {
+            background: rgba(220, 53, 69, 0.2);
+            border: 1px solid #dc3545;
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <header class="navbar glass-card">
+        <div class="nav-container">
+            <div class="logo">
+                <a href="home.php"><img src="./images/logo.png" alt="Logical Human logo"></a>
+                <span>LH Admin</span>
+            </div>
+            <nav class="nav-links">
+                <a href="home.php">← Back to Site</a>
+            </nav>
+            <div class="social-icons">
+                <a href="logout.php" class="logout-btn" title="Logout">
+                    <svg class="logout-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16,17 21,12 16,7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="admin-container">
+            <!-- Sidebar -->
+            <aside class="admin-sidebar glass-card">
+                <h3 style="color: var(--netflix-red); margin-bottom: 1.5rem;">Admin Panel</h3>
+                <nav>
+                    <a href="#dashboard" class="active">Dashboard</a>
+                    <a href="#users">User Management</a>
+                    <a href="#posts">Post Management</a>
+                    <a href="#comments">Comment Management</a>
+                    <a href="#analytics">Analytics</a>
+                </nav>
+            </aside>
+
+            <!-- Main Content -->
+            <div class="admin-content">
+                <?php if ($error): ?>
+                    <div class="alert alert-error"><?php echo htmlspecialchars(
+                        $error,
+                    ); ?></div>
+                <?php endif; ?>
+
+                <?php if ($success): ?>
+                    <div class="alert alert-success"><?php echo htmlspecialchars(
+                        $success,
+                    ); ?></div>
+                <?php endif; ?>
+
+                <!-- Dashboard Section -->
+                <section id="dashboard" class="admin-section">
+                    <h2 style="color: var(--netflix-red); margin-bottom: 1.5rem;">Admin Dashboard</h2>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <span class="stat-number"><?php echo $stats[
+                                "total_users"
+                            ]; ?></span>
+                            <span class="stat-label">Total Users</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-number"><?php echo $stats[
+                                "total_posts"
+                            ]; ?></span>
+                            <span class="stat-label">Total Posts</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-number"><?php echo $stats[
+                                "total_comments"
+                            ]; ?></span>
+                            <span class="stat-label">Total Comments</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-number"><?php echo $stats[
+                                "admin_users"
+                            ]; ?></span>
+                            <span class="stat-label">Admin Users</span>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                        <div>
+                            <h3 style="color: var(--netflix-silver); margin-bottom: 1rem;">Recent Users</h3>
+                            <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px;">
+                                <?php foreach (
+                                    array_slice($users, 0, 5)
+                                    as $user
+                                ): ?>
+                                    <div style="padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                        <strong><?php echo htmlspecialchars(
+                                            $user["username"],
+                                        ); ?></strong>
+                                        <span class="role-badge role-<?php echo $user[
+                                            "role"
+                                        ]; ?>" style="float: right;">
+                                            <?php echo ucfirst(
+                                                $user["role"],
+                                            ); ?>
+                                        </span>
+                                        <br>
+                                        <small style="color: var(--netflix-silver-muted);"><?php echo $user[
+                                            "email"
+                                        ]; ?></small>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 style="color: var(--netflix-silver); margin-bottom: 1rem;">Recent Posts</h3>
+                            <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px;">
+                                <?php foreach (
+                                    array_slice($posts, 0, 5)
+                                    as $post
+                                ): ?>
+                                    <div style="padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                        <strong><?php echo htmlspecialchars(
+                                            $post["title"],
+                                        ); ?></strong>
+                                        <br>
+                                        <small style="color: var(--netflix-silver-muted);">
+                                            By <?php echo htmlspecialchars(
+                                                $post["author_name"],
+                                            ); ?>
+                                            on <?php echo $post[
+                                                "created_at"
+                                            ]; ?>
+                                        </small>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- User Management Section -->
+                <section id="users" class="admin-section">
+                    <h2 style="color: var(--netflix-red); margin-bottom: 1.5rem;">User Management</h2>
+
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Joined</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($users as $user): ?>
+                            <tr>
+                                <td><?php echo $user["id"]; ?></td>
+                                <td><?php echo htmlspecialchars(
+                                    $user["username"],
+                                ); ?></td>
+                                <td><?php echo htmlspecialchars(
+                                    $user["email"],
+                                ); ?></td>
+                                <td>
+                                    <form method="POST" style="display: flex; gap: 0.5rem; align-items: center;">
+                                        <input type="hidden" name="user_id" value="<?php echo $user[
+                                            "id"
+                                        ]; ?>">
+                                        <select name="role" style="background: black; color: white; border: 1px solid #ccc; padding: 4px 8px; border-radius: 4px;">
+                                            <option value="user" <?php echo $user[
+                                                "role"
+                                            ] === "user"
+                                                ? "selected"
+                                                : ""; ?>>User</option>
+                                            <option value="admin" <?php echo $user[
+                                                "role"
+                                            ] === "admin"
+                                                ? "selected"
+                                                : ""; ?>>Admin</option>
+                                        </select>
+                                        <button type="submit" name="update_user_role" class="btn btn-primary">Update</button>
+                                    </form>
+                                </td>
+                                <td><?php echo $user["created_at"]; ?></td>
+                                <td>
+                                    <?php if (
+                                        $user["id"] != $_SESSION["user_id"]
+                                    ): ?>
+                                    <form method="POST" style="display: inline;">
+                                        <input type="hidden" name="user_id" value="<?php echo $user[
+                                            "id"
+                                        ]; ?>">
+                                        <button type="submit" name="delete_user" class="btn btn-danger"
+                                                onclick="return confirm('Are you sure you want to delete this user?')">
+                                            Delete
+                                        </button>
+                                    </form>
+                                    <?php else: ?>
+                                        <em>Current User</em>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </section>
+
+                <!-- Post Management Section -->
+                <section id="posts" class="admin-section">
+                    <h2 style="color: var(--netflix-red); margin-bottom: 1.5rem;">Post Management</h2>
+
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Title</th>
+                                <th>Author</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($posts as $post): ?>
+                            <tr>
+                                <td><?php echo $post["id"]; ?></td>
+                                <td><?php echo htmlspecialchars(
+                                    $post["title"],
+                                ); ?></td>
+                                <td><?php echo htmlspecialchars(
+                                    $post["author_name"],
+                                ); ?></td>
+                                <td><?php echo $post["created_at"]; ?></td>
+                                <td>
+                                    <form method="POST" style="display: inline;">
+                                        <input type="hidden" name="post_id" value="<?php echo $post[
+                                            "id"
+                                        ]; ?>">
+                                        <button type="submit" name="delete_post" class="btn btn-danger"
+                                                onclick="return confirm('Are you sure you want to delete this post?')">
+                                            Delete
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </section>
+
+                <!-- Comment Management Section -->
+                <section id="comments" class="admin-section">
+                    <h2 style="color: var(--netflix-red); margin-bottom: 1.5rem;">Comment Management</h2>
+
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>User</th>
+                                <th>Post</th>
+                                <th>Comment</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($comments as $comment): ?>
+                            <tr>
+                                <td><?php echo $comment["id"]; ?></td>
+                                <td><?php echo htmlspecialchars(
+                                    $comment["username"],
+                                ); ?></td>
+                                <td><?php echo htmlspecialchars(
+                                    $comment["post_title"],
+                                ); ?></td>
+                                <td><?php echo htmlspecialchars(
+                                    substr($comment["content"], 0, 50),
+                                ); ?>...</td>
+                                <td><?php echo $comment["created_at"]; ?></td>
+                                <td>
+                                    <form method="POST" style="display: inline;">
+                                        <input type="hidden" name="comment_id" value="<?php echo $comment[
+                                            "id"
+                                        ]; ?>">
+                                        <button type="submit" name="delete_comment" class="btn btn-danger"
+                                                onclick="return confirm('Are you sure you want to delete this comment?')">
+                                            Delete
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Smooth scrolling for admin sidebar navigation
+        document.querySelectorAll('.admin-sidebar a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href').substring(1);
+                const targetSection = document.getElementById(targetId);
+
+                if (targetSection) {
+                    // Update active link
+                    document.querySelectorAll('.admin-sidebar a').forEach(a => a.classList.remove('active'));
+                    this.classList.add('active');
+
+                    // Scroll to section
+                    targetSection.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,848 @@
+/* ===== NETFLIX THEME - RED, SILVER & BLACK ===== */
+:root {
+    --netflix-red: #e50914;
+    --netflix-red-dark: #b20710;
+    --netflix-red-light: #ff0a16;
+    --netflix-black: #000000;
+    --netflix-black-dark: #141414;
+    --netflix-black-light: #2d2d2d;
+    --netflix-silver: #ffffff;
+    --netflix-silver-muted: #b3b3b3;
+    --netflix-silver-dark: #8c8c8c;
+    --netflix-gradient: linear-gradient(135deg, #000000, #141414);
+}
+
+/* ===== BASE STYLES ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    background: var(--netflix-gradient);
+    color: var(--netflix-silver);
+    min-height: 100vh;
+    line-height: 1.4;
+}
+
+/* ===== LOGIN PAGE ===== */
+.admin-login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+    background: var(--netflix-gradient);
+}
+
+.login-glass-card {
+    background: rgba(0, 0, 0, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    padding: 60px 68px 40px;
+    width: 100%;
+    max-width: 450px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+}
+
+.login-header {
+    text-align: left;
+    margin-bottom: 28px;
+}
+
+.login-header h1 {
+    color: var(--netflix-red);
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.login-header p {
+    color: var(--netflix-silver-muted);
+    font-size: 16px;
+}
+
+.admin-login-form .form-group {
+    margin-bottom: 16px;
+}
+
+.admin-login-form label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--netflix-silver);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.admin-login-form input {
+    width: 100%;
+    padding: 16px 20px;
+    border: 1px solid #333;
+    border-radius: 4px;
+    background: rgba(22, 22, 22, 0.7);
+    color: var(--netflix-silver);
+    font-size: 16px;
+    transition: all 0.2s ease;
+}
+
+.admin-login-form input:focus {
+    outline: none;
+    border-color: var(--netflix-silver);
+    background: rgba(45, 45, 45, 0.7);
+}
+
+.netflix-btn {
+    width: 100%;
+    padding: 16px;
+    background: var(--netflix-red);
+    color: var(--netflix-silver);
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    margin-top: 24px;
+}
+
+.netflix-btn:hover {
+    background: var(--netflix-red-light);
+}
+
+.login-footer {
+    text-align: center;
+    margin-top: 16px;
+    color: var(--netflix-silver-muted);
+    font-size: 13px;
+}
+
+.error-message {
+    background: rgba(229, 9, 20, 0.1);
+    border: 1px solid var(--netflix-red);
+    color: var(--netflix-red);
+    padding: 12px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+/* ===== NAVBAR ===== */
+.navbar {
+    background: linear-gradient(
+        180deg,
+        rgba(0, 0, 0, 0.95) 0%,
+        rgba(0, 0, 0, 0.9) 100%
+    );
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 20px 0;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+}
+
+.nav-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--netflix-red);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.nav-links {
+    display: flex;
+    gap: 24px;
+}
+
+.nav-links a {
+    color: var(--netflix-silver-muted);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 8px 12px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.nav-links a:hover {
+    color: var(--netflix-silver);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.nav-links a.active {
+    color: var(--netflix-silver);
+    background: rgba(229, 9, 20, 0.2);
+    border-left: 3px solid var(--netflix-red);
+}
+
+/* ===== CONTAINER ===== */
+.container {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+/* ===== DASHBOARD ===== */
+.dashboard-hero {
+    text-align: center;
+    margin: 60px 0;
+    padding: 40px;
+    background: rgba(20, 20, 20, 0.7);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dashboard-hero h1 {
+    color: var(--netflix-red);
+    font-size: 48px;
+    font-weight: 900;
+    margin-bottom: 16px;
+    letter-spacing: -0.5px;
+}
+
+.dashboard-hero p {
+    color: var(--netflix-silver-muted);
+    font-size: 18px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin: 40px 0;
+}
+
+.stat-card {
+    background: rgba(20, 20, 20, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 24px;
+    text-align: center;
+    transition: transform 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--netflix-red);
+}
+
+.stat-value {
+    font-size: 48px;
+    font-weight: 900;
+    color: var(--netflix-red);
+    margin-bottom: 8px;
+    line-height: 1;
+}
+
+.stat-label {
+    color: var(--netflix-silver-muted);
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+    margin-top: 40px;
+}
+
+.dashboard-card {
+    background: rgba(20, 20, 20, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 32px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.dashboard-card:hover {
+    border-color: var(--netflix-red);
+    transform: translateY(-8px);
+    box-shadow: 0 10px 30px rgba(229, 9, 20, 0.2);
+}
+
+.card-icon {
+    font-size: 48px;
+    color: var(--netflix-red);
+    margin-bottom: 20px;
+}
+
+.dashboard-card h3 {
+    color: var(--netflix-silver);
+    font-size: 20px;
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+
+.dashboard-card p {
+    color: var(--netflix-silver-muted);
+    margin-bottom: 24px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.card-link {
+    display: inline-block;
+    background: var(--netflix-red);
+    color: var(--netflix-silver);
+    padding: 12px 24px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: background 0.2s ease;
+}
+
+.card-link:hover {
+    background: var(--netflix-red-light);
+}
+
+/* ===== USER MANAGEMENT ===== */
+.management-header {
+    margin: 40px 0 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.management-header h1 {
+    color: var(--netflix-red);
+    font-size: 36px;
+    font-weight: 700;
+}
+
+.alert {
+    padding: 16px 20px;
+    border-radius: 4px;
+    margin-bottom: 24px;
+    border-left: 4px solid;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.alert.success {
+    background: rgba(76, 175, 80, 0.1);
+    border-color: #4caf50;
+    color: #4caf50;
+}
+
+.alert.error {
+    background: rgba(229, 9, 20, 0.1);
+    border-color: var(--netflix-red);
+    color: var(--netflix-red);
+}
+
+.glass-card {
+    background: rgba(20, 20, 20, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 24px;
+    backdrop-filter: blur(10px);
+}
+
+.users-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.users-table th {
+    background: rgba(229, 9, 20, 0.1);
+    color: var(--netflix-red);
+    padding: 16px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 2px solid rgba(229, 9, 20, 0.3);
+}
+
+.users-table td {
+    padding: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: var(--netflix-silver-muted);
+}
+
+.users-table tr:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.users-table tr:last-child td {
+    border-bottom: none;
+}
+
+.role-form {
+    display: inline-block;
+}
+
+.role-form select {
+    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.5);
+    color: var(--netflix-silver);
+    font-size: 14px;
+    min-width: 140px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.role-form select:focus {
+    outline: none;
+    border-color: var(--netflix-red);
+}
+
+.delete-btn {
+    background: rgba(229, 9, 20, 0.2);
+    color: var(--netflix-red);
+    border: 1px solid var(--netflix-red);
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.delete-btn:hover {
+    background: var(--netflix-red);
+    color: var(--netflix-silver);
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge.current-user {
+    background: rgba(0, 122, 255, 0.1);
+    color: #007aff;
+    border: 1px solid rgba(0, 122, 255, 0.3);
+}
+
+.badge.protected {
+    background: rgba(255, 204, 0, 0.1);
+    color: #ffcc00;
+    border: 1px solid rgba(255, 204, 0, 0.3);
+}
+
+.no-data {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--netflix-silver-muted);
+}
+
+.no-data i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.no-data p {
+    font-size: 16px;
+}
+
+/* ===== PHOTO MANAGEMENT ===== */
+.upload-section {
+    background: rgba(20, 20, 20, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 32px;
+    margin-bottom: 40px;
+}
+
+.upload-section h2 {
+    color: var(--netflix-red);
+    font-size: 24px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.upload-form {
+    max-width: 600px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--netflix-silver);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.5);
+    color: var(--netflix-silver);
+    font-size: 16px;
+    transition: all 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--netflix-red);
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.form-group textarea {
+    min-height: 120px;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.file-note {
+    color: var(--netflix-silver-muted);
+    font-size: 13px;
+    margin-top: 6px;
+    font-style: italic;
+}
+
+.btn {
+    padding: 14px 28px;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: var(--netflix-red);
+    color: var(--netflix-silver);
+}
+
+.btn-primary:hover {
+    background: var(--netflix-red-light);
+}
+
+.photos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 24px;
+    margin-top: 30px;
+}
+
+.photo-card {
+    background: rgba(20, 20, 20, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.photo-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--netflix-red);
+    box-shadow: 0 8px 25px rgba(229, 9, 20, 0.2);
+}
+
+.photo-image {
+    width: 100%;
+    height: 200px;
+    overflow: hidden;
+}
+
+.photo-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.photo-card:hover .photo-image img {
+    transform: scale(1.05);
+}
+
+.photo-info {
+    padding: 20px;
+}
+
+.photo-info h4 {
+    color: var(--netflix-silver);
+    font-size: 18px;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.photo-description {
+    color: var(--netflix-silver-muted);
+    margin-bottom: 12px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.photo-meta {
+    display: flex;
+    justify-content: space-between;
+    color: var(--netflix-silver-dark);
+    font-size: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.photo-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.action-btn {
+    flex: 1;
+    padding: 10px;
+    border-radius: 4px;
+    text-align: center;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.action-btn.edit {
+    background: rgba(76, 175, 80, 0.1);
+    color: #4caf50;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.action-btn.edit:hover {
+    background: #4caf50;
+    color: var(--netflix-silver);
+}
+
+.action-btn.delete {
+    background: rgba(229, 9, 20, 0.1);
+    color: var(--netflix-red);
+    border: 1px solid rgba(229, 9, 20, 0.3);
+}
+
+.action-btn.delete:hover {
+    background: var(--netflix-red);
+    color: var(--netflix-silver);
+}
+
+/* ===== EDIT PHOTO ===== */
+.edit-container {
+    max-width: 800px;
+}
+
+.edit-form-container {
+    background: rgba(20, 20, 20, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 32px;
+}
+
+.edit-form-container h1 {
+    color: var(--netflix-red);
+    font-size: 32px;
+    margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.current-photo {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.current-photo h3 {
+    color: var(--netflix-silver);
+    margin-bottom: 16px;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.current-photo img {
+    max-width: 100%;
+    max-height: 400px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    margin-bottom: 20px;
+}
+
+.photo-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.info-label {
+    color: var(--netflix-silver-muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+}
+
+.info-value {
+    color: var(--netflix-silver);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.edit-form {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 16px;
+    margin-top: 30px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--netflix-silver);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* ===== UTILITY CLASSES ===== */
+.mt-4 {
+    margin-top: 40px;
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+    .nav-container {
+        flex-direction: column;
+        gap: 16px;
+        padding: 16px;
+    }
+
+    .nav-links {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 12px;
+    }
+
+    .dashboard-hero h1 {
+        font-size: 36px;
+    }
+
+    .login-glass-card {
+        padding: 40px 30px;
+    }
+
+    .photos-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 0 16px;
+    }
+
+    .dashboard-hero {
+        padding: 30px 20px;
+    }
+
+    .dashboard-hero h1 {
+        font-size: 28px;
+    }
+
+    .stat-value {
+        font-size: 36px;
+    }
+
+    .users-table {
+        font-size: 13px;
+    }
+
+    .users-table th,
+    .users-table td {
+        padding: 12px 8px;
+    }
+}

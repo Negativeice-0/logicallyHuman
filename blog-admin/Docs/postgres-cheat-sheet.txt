@@ -1,0 +1,86 @@
+You're getting this error because the `logic_user` doesn't own the `users` table. You need to **change ownership** or connect as the owner (usually `postgres`).
+
+---
+
+### 🔧 Fix: Connect as PostgreSQL Superuser
+
+```bash
+psql -h localhost -U postgres -d logical_db
+```
+
+When prompted, enter the **postgres password** (the one you set during PostgreSQL installation).
+
+Then run your SQL commands:
+
+```sql
+ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'user';
+UPDATE users SET role = 'user' WHERE role IS NULL;
+UPDATE users SET role = 'admin' WHERE id = 1;
+```
+
+---
+
+### 🔐 Alternative: Change Table Ownership
+
+If you want `logic_user` to own the table, connect as `postgres` and run:
+
+```sql
+ALTER TABLE users OWNER TO logic_user;
+```
+
+Then you can use `logic_user` to modify the table in the future.
+
+---
+
+### 📚 PostgreSQL Cheatsheet
+
+| Command | Description |
+|---------|-------------|
+| `psql -U postgres -d logical_db` | Connect as superuser |
+| `psql -U logic_user -d logical_db` | Connect as regular user |
+| `\l` | List all databases |
+| `\c logical_db` | Connect to a database |
+| `\d` | List all tables |
+| `\d users` | Show table structure |
+| `\du` | List all users/roles |
+| `\q` | Exit PostgreSQL |
+| `SELECT * FROM users;` | View all users |
+| `SELECT * FROM users WHERE id = 1;` | View specific user |
+| `ALTER TABLE users OWNER TO logic_user;` | Change table owner |
+| `GRANT ALL ON users TO logic_user;` | Grant permissions |
+| `DROP TABLE users;` | Delete table (careful!) |
+| `CREATE TABLE table_name (id SERIAL PRIMARY KEY);` | Create table |
+| `INSERT INTO users (username, email) VALUES ('john', 'john@example.com');` | Add row |
+| `UPDATE users SET role = 'admin' WHERE id = 1;` | Update row |
+| `DELETE FROM users WHERE id = 1;` | Delete row |
+| `ALTER TABLE users ADD COLUMN role VARCHAR(20);` | Add column |
+| `ALTER TABLE users DROP COLUMN role;` | Remove column |
+| `SELECT COUNT(*) FROM users;` | Count rows |
+| `SELECT DISTINCT role FROM users;` | Get unique values |
+| `SELECT * FROM users ORDER BY created_at DESC;` | Sort results |
+| `SELECT * FROM users LIMIT 5;` | Limit results |
+| `\i /path/to/file.sql` | Run SQL file |
+| `pg_dump -U postgres logical_db > backup.sql` | Backup database |
+| `psql -U postgres logical_db < backup.sql` | Restore database |
+
+---
+
+### 🎯 Quick Solution:
+
+```bash
+# Connect as superuser
+psql -h localhost -U postgres -d logical_db
+
+# Run your commands
+ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'user';
+UPDATE users SET role = 'user' WHERE role IS NULL;
+UPDATE users SET role = 'admin' WHERE id = 1;
+
+# Optional: Give ownership to logic_user
+ALTER TABLE users OWNER TO logic_user;
+
+# Exit
+\q
+```
+
+That should fix it! 🎉

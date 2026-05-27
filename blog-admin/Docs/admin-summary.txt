@@ -1,0 +1,1425 @@
+Alas we start with permisions, don't forget to permission each and every folder.
+I forgot uploads ( the last document i made in admin -- i should have used -R flag.
+Regardless - here is the work around..
+# Check if the directory exists
+ls -la /var/www/blog/ | grep uploads
+
+or
+
+ls -la /var/www/blog/uploads/
+
+# Navigate to blog directory
+cd /var/www/blog
+
+
+# Create uploads directory if it doesn't exist
+
+sudo mkdir -p uploads
+
+# Set proper ownership (www-data is the web server user)
+
+sudo chown -R www-data:www-data uploads/
+
+# Set proper permissions (read, write, execute for owner, read for others)
+
+sudo chmod -R 755 uploads/
+
+
+# Verify the changes
+
+ls -la | grep uploads
+
+
+Based on your situation with /var/www/blog, here are the commands you need to gain full access to your directory:
+
+Take Ownership of the Directory
+bash
+
+Copy
+# Take ownership of the entire directory and its contents
+sudo chown -R $USER:$USER /var/www/blog/admin
+
+# Or specify your username
+
+ explicitly (replace 'lsetga' with your username)
+sudo chown -R lsetga:lsetga /var/www/blog/admin
+Set Proper Permissions
+bash
+
+Copy
+# Give yourself full permissions (read, write, execute)
+sudo chmod -R 755 /var/www/blog/admin
+
+# For more restrictive access (only you have full control)
+sudo chmod -R 700 /var/www/blog
+
+# Or for full permissions for owner, group, and others
+sudo chmod -R 777 /var/www/blog  # (Not recommended for security)
+
+
+For Web Server Access
+Since this is a web directory, you'll also want to ensure the web server can access it:
+
+bash
+
+Copy
+# Give ownership to www-data (Apache/Nginx user) while keeping your access
+sudo chown -R www-data:www-data /var/www/blog
+
+# Set permissions so web server can read/execute, and you can write
+sudo chmod -R 755 /var/www/blog
+
+# Add yourself to the www-data group for easier management
+sudo usermod -a -G www-data lsetga
+Verify Permissions
+bash
+
+Copy
+# Check current permissions
+ls -la /var/www/blog
+
+# Check ownership
+stat /var/www/blog/admin
+The most common approach for web directories is to use sudo chown -R www-data:www-data /var/www/blog/admin followed by sudo chmod -R 755 /var/www/blog/admin to ensure both you and the web server have appropriate access
+5.
+
+
+Grant Specific Permissions Using icacls (if needed)
+If you need more granular control, you can use icacls to grant explicit permissions
+6:
+
+bash
+
+Copy
+# Grant full control to your user
+icacls "/var/www/blog" /grant lsetga:F /T
+
+# The /T flag applies permissions recursively to all subfolders and files
+
+
+You need to grant your PostgreSQL user (`logic_user`) permissions on all tables in your database. Here are the commands to fix this:
+
+## Grant All Permissions to Your User
+
+```bash
+# Connect to PostgreSQL as the postgres superuser
+sudo -u postgres psql
+
+# Then run these commands in the PostgreSQL prompt:
+```
+
+```sql
+-- Connect to your database
+\c logical_db
+
+-- Grant all privileges on the database
+GRANT ALL PRIVILEGES ON DATABASE logical_db TO logic_user;
+
+-- Grant all privileges on all tables in the public schema
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO logic_user;
+
+-- Grant all privileges on all sequences (for auto-increment IDs)
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO logic_user;
+
+-- Grant usage on the schema itself
+GRANT USAGE ON SCHEMA public TO logic_user;
+
+-- Set default privileges for future tables
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO logic_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO logic_user;
+
+-- Exit PostgreSQL
+\q
+```
+
+## Quick One-Liner Script
+
+Or run this as a bash script:
+
+```bash
+sudo -u postgres psql -d logical_db -c "
+GRANT ALL PRIVILEGES ON DATABASE logical_db TO logic_user;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO logic_user;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO logic_user;
+GRANT USAGE ON SCHEMA public TO logic_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO logic_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO logic_user;
+"
+```
+
+## Verify Permissions
+
+Check if permissions were granted correctly:
+
+```bash
+sudo -u postgres psql -d logical_db -c "\dp"
+```
+
+This will show you the access privileges for all tables.
+
+## If You Need to Grant Permissions on Specific Tables
+
+If you only want to grant permissions on specific tables:
+
+```sql
+-- For the photos table specifically
+GRANT ALL PRIVILEGES ON TABLE photos TO logic_user;
+
+-- For the users table
+GRANT ALL PRIVILEGES ON TABLE users TO logic_user;
+
+-- For any sequences (like photo_id_seq)
+GRANT ALL PRIVILEGES ON SEQUENCE photos_id_seq TO logic_user;
+GRANT ALL PRIVILEGES ON SEQUENCE users_id_seq TO logic_user;
+```
+
+After running these commands, your admin panel should work properly without permission errors. The error occurred because the `logic_user` didn't have SELECT, INSERT, UPDATE, or DELETE privileges on the `photos` table.
+
+
+<!-- below is the shared config -->
+<?php
+// For PRODUCTION: Disable error display to users
+ini_set("display_errors", 0);
+ini_set("display_startup_errors", 0);
+error_reporting(E_ALL); // Still log all errors (usually to a file)
+
+// For DEVELOPMENT: Display all errors for debugging
+// ini_set('display_errors', 1);
+// ini_set('display_startup_errors', 1);
+// error_reporting(E_ALL);
+session_set_cookie_params([
+    "lifetime" => 0,
+    "path" => "/",
+    "domain" => "",
+    "secure" => false, // set to true if using HTTPS
+    "httponly" => true,
+    "samesite" => "Lax",
+]);
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+define("DB_HOST", "localhost");
+define("DB_NAME", "logical_db");
+define("DB_USER", "logic_user");
+define("DB_PASS", "logical123");
+define("BASE_URL", "http://localhost");
+
+function getDB()
+{
+    static $db = null;
+    if ($db === null) {
+        try {
+            $db = new PDO(
+                "pgsql:host=" . DB_HOST . ";dbname=" . DB_NAME,
+                DB_USER,
+                DB_PASS,
+            );
+            $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        } catch (PDOException $e) {
+            die("Database connection failed: " . $e->getMessage());
+        }
+    }
+    return $db;
+}
+
+function requireAuth()
+{
+    if (!isset($_SESSION["user_id"])) {
+        header("Location: login.php");
+        exit();
+    }
+}
+
+function requireAdmin()
+{
+    if (!isset($_SESSION["user_id"]) || !isset($_SESSION["role"])) {
+        header("Location: login.php");
+        exit();
+    }
+
+    if ($_SESSION["role"] !== "admin") {
+        header("Location: home.php");
+        exit();
+    }
+}
+
+function getBasePath()
+{
+    return __DIR__;
+}
+
+// CSRF Protection
+if (!isset($_SESSION["csrf_token"])) {
+    $_SESSION["csrf_token"] = bin2hex(random_bytes(32));
+}
+
+// Get user role
+function getUserRole($user_id)
+{
+    $db = getDB();
+    $stmt = $db->prepare("SELECT role FROM users WHERE id = :user_id");
+    $stmt->execute([":user_id" => $user_id]);
+    $result = $stmt->fetch();
+    return $result ? $result["role"] : "user";
+}
+
+// NEW: Database setup function for first-time installation
+function setupDatabase($db = null)
+{
+    if (!$db) {
+        $db = getDB();
+    }
+
+    try {
+        // Check if role column exists
+        $db->query("SELECT role FROM users LIMIT 1");
+    } catch (PDOException $e) {
+        // Role column doesn't exist, create it
+        $db->exec(
+            "ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'user'",
+        );
+        error_log("Database: Added role column");
+    }
+}
+?>
+
+<-- my database
+My database:(This:"public | photos   | table | postgres
+ public | posts    | table | logic_user
+ public | users    | table | logic_user" is what i got, what of the columns?)"   "photos_url_not_null" NOT NULL "url"
+    "photos_created_at_not_null" NOT NULL "created_at"
+Access method: heap &&    "comments_id_not_null" NOT NULL "id"
+    "comments_content_not_null" NOT NULL "content"
+Access method: heap &&    "users_email_not_null" NOT NULL "email"
+    "users_password_not_null" NOT NULL "password"
+Access method: heap &&     "posts_title_not_null" NOT NULL "title"
+    "posts_content_not_null" NOT NULL "content"
+Access method: heap".
+-->
+
+<!-- below is user manage.php -->
+<?php
+session_start();
+require('../connection.php');
+
+// Check if the user is logged in and has admin role
+if (!isset($_SESSION['admin_id'])) {
+    header("Location: index.php");
+    exit();
+}
+
+// Fetch all users
+$users = mysqli_query($conn, "SELECT * FROM users");
+
+if (isset($_POST['delete_user'])) {
+    $user_id = $_POST['user_id'];
+    mysqli_query($conn, "DELETE FROM users WHERE id='$user_id'");
+    header("Location: usermanage.php");
+}
+?>
+
+<!-- Feel free to go crazy with the css so long as it is netflix style.
+add search feature, role assignment (suggest a secure method of assigning admin
+some suggest by having a role column in database but not in registration form)
+and implement a custom full feture ai in custom js (something we can download
+that is already trained explaining its origins and how to make a duplicate of itself).-->
+
+
+<!-- below is dashboard.php -->
+<body>
+    <div class="dashboard-container">
+        <h1>Admin Dashboard</h1>
+        <div class="button-container">
+            <a href="usermanage.php" class="dashboard-button">User Management</a>
+            <a href="photo.php" class="dashboard-button">Photo Management</a>
+        </div>
+    </div>
+</body>
+
+
+<!-- below is photoshop.php , feel free to be inspired by photoshop itself-->
+<?php
+// Start session to track user login
+session_start();
+
+// Connect to database
+require('../connection.php');
+
+// ========================================
+// STEP 1: Check if form was submitted (UPDATE)
+// ========================================
+if (isset($_POST['updatephoto'])) {
+
+    // Get data from form and protect against SQL injection
+    $id = mysqli_real_escape_string($conn, $_POST['id']);
+    $title = mysqli_real_escape_string($conn, $_POST['title']);
+    $description = mysqli_real_escape_string($conn, $_POST['description']);
+
+    // Get current photo path from database (we need this to delete old photo)
+    $get_old_photo = "SELECT photo_path FROM photos WHERE id='$id'";
+    $result = mysqli_query($conn, $get_old_photo);
+    $old_photo = mysqli_fetch_assoc($result);
+
+    // Check if user uploaded a NEW photo
+    if (!empty($_FILES['photo']['name'])) {
+
+        // Get the uploaded file
+        $new_photo = $_FILES['photo'];
+
+        // Security: Only allow JPEG and PNG images
+        $allowed_types = ['image/jpeg', 'image/png'];
+        if (!in_array($new_photo['type'], $allowed_types)) {
+            die("Error: Only JPEG and PNG images are allowed!");
+        }
+
+        // Create a unique name for the file
+        $file_extension = pathinfo($new_photo['name'], PATHINFO_EXTENSION);
+        $unique_name = uniqid("photo_", true) . "." . $file_extension;
+
+        // Create folder structure: uploads/2024/11/
+        $folder = "uploads/" . date("Y") . "/" . date("m") . "/";
+        $full_path = $folder . $unique_name;
+
+        // Create folder if it doesn't exist
+        if (!is_dir($folder)) {
+            mkdir($folder, 0777, true);
+        }
+
+        // Upload the new photo
+        if (move_uploaded_file($new_photo["tmp_name"], $full_path)) {
+
+            // Delete the old photo file from server
+            if ($old_photo && file_exists($old_photo['photo_path'])) {
+                unlink($old_photo['photo_path']);
+            }
+
+            // Update database with new photo
+            $sql = "UPDATE photos SET title='$title', description='$description', photo_path='$full_path' WHERE id='$id'";
+
+        } else {
+            die("Error: Failed to upload new photo.");
+        }
+
+    } else {
+        // No new photo uploaded, just update title and description
+        $sql = "UPDATE photos SET title='$title', description='$description' WHERE id='$id'";
+    }
+
+    // Execute the update query
+    if (mysqli_query($conn, $sql)) {
+        // Success! Go back to photo list
+        header("Location: photo.php");
+        exit();
+    } else {
+        echo "Database Error: " . mysqli_error($conn);
+    }
+}
+
+// ========================================
+// STEP 2: Get photo details to display in form
+// ========================================
+if (isset($_GET['edit_id'])) {
+
+    // Get the photo ID from URL and protect against SQL injection
+    $id = mysqli_real_escape_string($conn, $_GET['edit_id']);
+
+    // Get photo details from database
+    $sql = "SELECT * FROM photos WHERE id='$id'";
+    $result = mysqli_query($conn, $sql);
+
+    if ($result) {
+        $photo = mysqli_fetch_assoc($result);
+
+        // Check if photo exists
+        if (!$photo) {
+            die("Photo not found! Please check if this photo exists.");
+        }
+    } else {
+        die("Database Error: " . mysqli_error($conn));
+    }
+
+} else {
+    die("Error: No photo ID provided!");
+}
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Photo</title>
+  <!-- style should still be netflix style but borrowing photoshop visuals like animations
+  that align well with netflix style would be great -->
+</head>
+<body>
+    <div class="container">
+        <h2>Edit Photo</h2>
+
+        <!-- Show current photo -->
+        <div class="current-photo">
+            <p><strong>Current Photo:</strong></p>
+            <img src="<?php echo htmlspecialchars($photo['photo_path']); ?>" alt="Current photo">
+        </div>
+
+        <!-- Edit form -->
+        <form action="editphoto.php" method="POST" enctype="multipart/form-data">
+
+            <!-- Hidden field to send photo ID -->
+            <input type="hidden" name="id" value="<?php echo htmlspecialchars($photo['id']); ?>">
+
+            <!-- Title input -->
+            <label for="title">Title:</label>
+            <input type="text" id="title" name="title" value="<?php echo htmlspecialchars($photo['title']); ?>" required>
+
+            <!-- Description input -->
+            <label for="description">Description:</label>
+            <textarea id="description" name="description" required><?php echo htmlspecialchars($photo['description']); ?></textarea>
+
+            <!-- Photo upload (optional) -->
+            <label for="photo">Change Photo (optional):</label>
+            <input type="file" id="photo" name="photo" accept="image/*">
+            <p class="note">Leave empty to keep the current photo</p>
+
+            <!-- Buttons -->
+            <button type="submit" name="updatephoto">Update Photo</button>
+            <a href="photo.php" class="cancel-btn">Cancel</a>
+        </form>
+    </div>
+</body>
+</html>
+
+
+
+<!-- main admin page
+**ADMIN SITE (admin.example.com or localhost:3001)**
+- Separate admin welcome/landing page with its own Login and Registration
+- After login → redirect to admin features/dashboard page
+- Admin dashboard with:
+  * Photoshop-style interface
+  * Parallax-effect side drawer navigation
+  * Navigation retracts to hamburger menu on mobile
+  * Features: manage posts, manage comments, upload images, view analytics
+
+**AI FEATURE (keep simple)**
+Add ONE of these AI enhancements:
+- Auto-generate blog post titles/descriptions from content
+- AI-powered image tagging for gallery uploads
+- Smart comment moderation (flag spam/inappropriate content)
+
+**TECHNICAL REQUIREMENTS**
+- Both sites connect to the same backend API
+- Separate authentication for public users vs admin users
+- Modern, clean UI with responsive design
+- Keep architecture simple but professional
+-->
+
+<?php
+
+require('../connection.php');
+
+if (isset($_POST['submit'])) {
+    $email = $_POST['email'];
+    $password = $_POST['password'];
+
+
+    $query = mysqli_query($conn, "SELECT * FROM users WHERE email='$email' AND password='$password' AND role='admin'");
+    $user = mysqli_fetch_assoc($query);
+
+    if ($user) {
+        session_start();
+        $_SESSION['admin_id'] = $user['id'];
+        echo "Login successful!";
+        header('Location: dashboard.php');
+    } else {
+        echo "Invalid email or password.";
+    }
+}
+?>
+
+<!-- logout.php -->
+<?php
+session_start();
+session_destroy();
+header("Location: ../index.php");
+exit();
+?>
+
+<!-- tweak css to netflix style please below is photo.php -->
+<?php
+session_start();
+require('../connection.php'); // Database connection file
+
+if (isset($_POST['addphoto'])) {
+    $title = mysqli_real_escape_string($conn, $_POST['title']);
+    $description = mysqli_real_escape_string($conn, $_POST['description']);
+    $photo = $_FILES['photo'];
+
+    // Validate file type
+    if (!in_array($photo['type'], ['image/jpeg', 'image/png'])) {
+        die("Invalid file type. Only JPEG and PNG are allowed.");
+    }
+
+    // Create unique filename and upload path
+    $unique_filename = uniqid("photo_", true) . "." . pathinfo($photo['name'], PATHINFO_EXTENSION);
+    $upload_directory = "uploads/" . date("Y") . "/" . date("m") . "/";
+    $target_file = $upload_directory . $unique_filename;
+;//
+    // Create directory if it doesn't exist
+    if (!is_dir($upload_directory)) mkdir($upload_directory, 0777, true);
+
+    // Move file and insert record in database
+    if (move_uploaded_file($photo["tmp_name"], $target_file)) {
+        $sql = "INSERT INTO photos (title, description, photo_path) VALUES ('$title', '$description', '$target_file')";
+        echo mysqli_query($conn, $sql) ? "Photo uploaded and saved successfully!" : "Database error: " . mysqli_error($conn);
+    } else {
+        echo "Error uploading file.";
+    }
+}
+
+// Handle delete request
+if (isset($_GET['delete_id'])) {
+    $photo_id = mysqli_real_escape_string($conn, $_GET['delete_id']);
+    $delete_sql = "DELETE FROM photos WHERE id='$photo_id'";
+    mysqli_query($conn, $delete_sql);
+    header("Location: photo.php");
+    exit();
+}
+
+// Handle edit request (add logic for edit form and update SQL as needed)
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Photo Management</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #a8c0ff, #3f2b96);
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        h2 {
+            color: #fff;
+            text-shadow: 1px 1px 2px #000;
+        }
+
+        form, table {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            margin: 20px 0;
+            width: 80%;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f4f4f4;
+            font-weight: bold;
+        }
+
+        img {
+            width: 80px;
+            border-radius: 4px;
+        }
+
+        button, a.action-btn {
+            background-color: #3f2b96;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover, a.action-btn:hover {
+            background-color: #a8c0ff;
+            color: #3f2b96;
+        }
+
+        .edit-btn {
+            background-color: #4caf50;
+        }
+
+        .delete-btn {
+            background-color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <h2>Photo Management</h2>
+
+    <!-- Add Photo Form -->
+    <h3>Add New Photo</h3>
+    <form action="photo.php" method="POST" enctype="multipart/form-data">
+        <label for="title">Title:</label>
+        <input type="text" id="title" name="title" required><br><br>
+
+        <label for="description">Description:</label>
+        <textarea id="description" name="description" required></textarea><br><br>
+
+        <label for="photo">Choose Photo:</label>
+        <input type="file" id="photo" name="photo" accept="image/*" required><br><br>
+
+        <button type="submit" name="addphoto">Add Photo</button>
+    </form>
+
+    <!-- Display Photos -->
+    <h3>Photo Library</h3>
+    <table>
+        <tr>
+            <th>Photo</th>
+            <th>Title</th>
+            <th>Description</th>
+            <th>Actions</th>
+        </tr>
+        <?php
+        $result = mysqli_query($conn, "SELECT * FROM photos ORDER BY uploaded_at DESC");
+
+        if ($result && mysqli_num_rows($result) > 0) {
+            while ($photo = mysqli_fetch_assoc($result)) {
+                $photo_path = htmlspecialchars($photo['photo_path'] ?? 'default.jpg');
+                $title = htmlspecialchars($photo['title'] ?? 'No Title');
+                $description = htmlspecialchars($photo['description'] ?? 'No Description');
+                $photo_id = htmlspecialchars($photo['photo_id'] ?? '');
+
+                echo "<tr>
+                        <td><img src='$photo_path'></td>
+                        <td>$title</td>
+                        <td>$description</td>
+
+                        <td>
+                            <a href='editphoto.php?edit_id={$photo['id']}' class='action-btn edit-btn'>Edit</a>
+                            <a href='photo.php?delete_id={$photo['id']}' onclick='return confirm(\"Are you sure?\")' class='action-btn delete-btn'>Delete</a>
+                        </td>
+                      </tr>";
+            }
+        } else {
+            echo "<tr><td colspan='4'>No photos found.</td></tr>";
+        }
+        ?>
+    </table>
+</body>
+</html>
+
+
+<!-- preferred css, to be adapted with changes to be applied to admin specific elements -->
+/* ===== PURE NETFLIX BLACK, SILVER & RED THEME (ENHANCED) ===== */
+:root {
+    --netflix-black: #000000;
+    --netflix-black-dark: #0a0a0a;
+    --netflix-black-light: #141414;
+    --netflix-red: #ff0050;
+    --netflix-red-dark: #e60046;
+    --netflix-red-light: #ff3366;
+    --netflix-silver: #ffffff;
+    --netflix-silver-muted: #bbbbbb;
+    --netflix-silver-dark: #888888;
+    --netflix-silver-darker: #555555;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* ===== BASE STYLES - PURE BLACK ===== */
+body {
+    font-family: "Roboto", sans-serif;
+    background-color: var(--netflix-black) !important;
+    color: var(--netflix-silver);
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+/* ===== GLASS EFFECT ===== */
+.glass-card {
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+
+/* ===== NAVBAR - ENHANCED LAYOUT ===== */
+.navbar {
+    width: 100%;
+    position: fixed;
+    top: 0;
+    z-index: 1000;
+    padding: 1rem 2rem;
+    background: var(--netflix-black) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nav-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: bold;
+    font-size: 1.2rem;
+    color: var(--netflix-red) !important;
+    flex-shrink: 0;
+}
+
+.logo img {
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+}
+
+/* FIXED: Social icons proper sizing and layout */
+.social-icons {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-shrink: 0;
+}
+
+.social-icons a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease;
+}
+
+.social-icons a img {
+    width: 24px; /* FIXED: Proper icon size */
+    height: 24px;
+    border-radius: 4px;
+    object-fit: contain;
+}
+
+.social-icons a:hover img {
+    transform: scale(1.2);
+}
+
+/* FIXED: Nav links centered and responsive */
+.nav-links {
+    display: flex;
+    gap: 1.5rem;
+    font-size: 0.95rem;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    flex: 1;
+    max-width: 600px;
+}
+
+.nav-links a {
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    color: var(--netflix-silver-muted);
+    white-space: nowrap;
+}
+
+.nav-links a:hover {
+    color: var(--netflix-red) !important;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.nav-links a.active {
+    color: var(--netflix-red) !important;
+    font-weight: bold;
+}
+
+/* FIXED: Logout button uniform size */
+.logout-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: var(--netflix-red);
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    flex-shrink: 0;
+}
+
+.logout-btn:hover {
+    background: var(--netflix-red-dark);
+    transform: scale(1.1);
+    box-shadow: 0 0 15px rgba(255, 0, 80, 0.5);
+}
+
+.logout-icon {
+    width: 20px;
+    height: 20px;
+    stroke: white;
+}
+
+/* ===== MAIN CONTAINER ===== */
+.container {
+    width: 100%;
+    max-width: 1200px;
+    padding: 2rem;
+    padding-top: 100px;
+}
+
+/* ===== HERO SECTION ===== */
+.hero {
+    text-align: center;
+    margin-bottom: 4rem;
+    padding-top: 8rem;
+    padding-bottom: 4rem;
+}
+
+.hero h1 {
+    font-size: 2.5rem;
+    color: var(--netflix-red) !important;
+    animation-delay: 0.5s;
+    white-space: nowrap;
+}
+
+.hero p {
+    margin-top: 1rem;
+    color: var(--netflix-silver-muted);
+    max-width: 700px;
+    margin-left: auto;
+    margin-right: auto;
+    animation-delay: 1s;
+}
+
+.animated-text {
+    opacity: 0;
+    animation: fadeIn 1s ease-in-out forwards;
+}
+
+@keyframes fadeIn {
+    to {
+        opacity: 1;
+    }
+}
+
+/* ===== SECTION DIVIDER ===== */
+.section-divider {
+    height: 2px;
+    width: 100px;
+    background-color: var(--netflix-red) !important;
+    margin: 4rem auto;
+}
+
+/* ===== FEATURED POSTS ===== */
+.featured-posts-section h2 {
+    text-align: center;
+    font-size: 2rem;
+    margin-bottom: 2rem;
+    color: var(--netflix-silver) !important;
+}
+
+.featured-posts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+    margin-top: 4rem;
+    margin-bottom: 4rem;
+}
+
+.featured-post {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 350px;
+    margin-bottom: 8rem;
+    margin-top: 4rem;
+}
+
+.featured-post h3 {
+    color: var(--netflix-red) !important;
+    margin-bottom: 0.5rem;
+}
+
+.featured-post .post-image {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.featured-post small {
+    display: block;
+    margin-top: 10px;
+    color: var(--netflix-silver-dark);
+}
+
+.read-more-btn {
+    display: inline-block;
+    margin-top: 15px;
+    padding: 8px 15px;
+    background-color: var(--netflix-red) !important;
+    color: white;
+    border-radius: 4px;
+    text-align: center;
+    transition: background-color 0.3s;
+}
+
+.read-more-btn:hover {
+    background-color: var(--netflix-red-dark) !important;
+}
+
+.no-posts-message {
+    text-align: center;
+    padding: 40px;
+    font-style: italic;
+    color: var(--netflix-silver-muted);
+}
+
+/* ===== FORM STYLES ===== */
+.registration-form-container {
+    padding: 40px;
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.registration-form-container h2 {
+    text-align: center;
+    color: var(--netflix-red) !important;
+    margin-bottom: 30px;
+    font-size: 1.8em;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: var(--netflix-silver-muted);
+}
+
+.form-group .error-message {
+    display: none;
+    color: var(--netflix-red) !important;
+    font-size: 0.85em;
+    margin-top: 5px;
+}
+
+.form-group input:not([type="radio"]),
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+    box-sizing: border-box;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--netflix-silver) !important;
+}
+
+.radio-group {
+    display: flex;
+    gap: 15px;
+}
+
+.radio-group label {
+    font-weight: normal;
+    margin-right: 15px;
+    color: var(--netflix-silver);
+}
+
+/* ===== BUTTONS ===== */
+.button-group {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 25px;
+}
+
+.button-group input {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#submit-btn,
+#login-submit-btn {
+    background-color: var(--netflix-red) !important;
+    color: white;
+    flex-grow: 1;
+}
+
+#reset-btn {
+    background-color: var(--netflix-silver-darker);
+    color: white;
+    width: 120px;
+}
+
+#submit-btn:hover:not([disabled]),
+#login-submit-btn:hover:not([disabled]) {
+    background-color: var(--netflix-red-dark) !important;
+    transform: translateY(-1px);
+}
+
+#reset-btn:hover {
+    background-color: var(--netflix-silver-dark);
+}
+
+[disabled] {
+    cursor: not-allowed;
+    filter: grayscale(80%);
+}
+
+/* ===== GALLERY ===== */
+.gallery h2 {
+    text-align: center;
+    font-size: 2rem;
+    margin-bottom: 4rem;
+    color: var(--netflix-silver) !important;
+}
+
+.slider-container {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1rem;
+    margin-top: 4rem;
+    margin-bottom: 2rem;
+}
+
+.slider {
+    display: flex;
+    transition: transform 0.5s ease-in-out;
+}
+
+.slide {
+    min-width: 100%;
+    text-align: center;
+}
+
+.slide-image {
+    width: 100%;
+    max-height: 60vh;
+    object-fit: contain;
+    border-radius: 1rem;
+    margin-bottom: 1rem;
+}
+
+.slider-button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.5rem;
+    z-index: 10;
+}
+
+.slider-button.prev {
+    left: 1rem;
+}
+
+.slider-button.next {
+    right: 1rem;
+}
+
+/* ===== ABOUT SECTION ===== */
+.about-section {
+    display: flex;
+    flex-direction: row-reverse;
+    gap: 20px;
+    align-items: center;
+    justify-content: center;
+    margin-top: 4rem;
+    margin-bottom: 2rem;
+}
+
+.card {
+    background: transparent;
+    border-radius: 10px;
+    padding: 18px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    flex: 1;
+}
+
+.image-card img {
+    max-width: 100%;
+    border-radius: 9px;
+}
+
+.text-card h2 {
+    margin-bottom: 10px;
+    color: var(--netflix-red) !important;
+}
+
+/* ===== CONTACT ===== */
+.contact {
+    text-align: center;
+    padding-top: 4rem;
+    padding-bottom: 4rem;
+    margin-top: 4rem;
+    margin-bottom: 2rem;
+}
+
+.contact a {
+    color: var(--netflix-red) !important;
+}
+
+.contact a:hover {
+    text-decoration: underline;
+}
+
+/* ===== FOOTER ===== */
+.footer {
+    width: 100%;
+    text-align: center;
+    padding: 1.5rem 0;
+    font-size: 0.875rem;
+    color: var(--netflix-silver-muted);
+    margin-top: 2rem;
+}
+
+/* ===== COMMENT SYSTEM ===== */
+.comments-section {
+    margin-top: 2rem;
+}
+
+.comments-section h3 {
+    color: var(--netflix-silver) !important;
+    margin-bottom: 15px;
+}
+
+#comments-list {
+    margin-top: 20px;
+}
+
+.comment-entry {
+    border-left: 3px solid var(--netflix-red) !important;
+    padding: 15px;
+    margin-bottom: 15px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 0 8px 8px 0;
+}
+
+.comment-entry strong {
+    color: var(--netflix-silver);
+    font-size: 1.1em;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.comment-entry small {
+    color: var(--netflix-silver-dark);
+    font-size: 0.8em;
+}
+
+.comment-form-container {
+    padding: 20px;
+    margin-bottom: 20px;
+    margin-top: 20px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+.comment-form-container input[type="submit"] {
+    background-color: var(--netflix-red) !important;
+}
+
+.comment-form-container input[type="submit"]:hover {
+    background-color: var(--netflix-red-dark) !important;
+}
+
+.comment-form-container .button-group {
+    justify-content: flex-end;
+}
+
+/* ===== LOADING INDICATOR ===== */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.spinner {
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top: 4px solid var(--netflix-red) !important;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* ===== MOBILE RESPONSIVENESS - ENHANCED ===== */
+@media (max-width: 768px) {
+    .nav-container {
+        flex-direction: column;
+        gap: 1rem;
+        padding: 0.5rem;
+    }
+
+    .nav-links {
+        order: 2;
+        gap: 0.8rem;
+        max-width: 100%;
+    }
+
+    .social-icons {
+        order: 3;
+        gap: 0.8rem;
+    }
+
+    .logo {
+        order: 1;
+    }
+
+    .container {
+        padding: 1rem;
+        padding-top: 120px; /* Increased for mobile navbar */
+    }
+
+    .hero h1 {
+        font-size: 2rem;
+    }
+
+    .about-section {
+        flex-direction: column;
+    }
+
+    .card {
+        padding: 15px;
+    }
+
+    .button-group {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    #reset-btn {
+        width: 100%;
+    }
+
+    /* Mobile navbar adjustments */
+    .navbar {
+        padding: 0.5rem 1rem;
+    }
+
+    .nav-links a {
+        font-size: 0.85rem;
+        padding: 6px 8px;
+    }
+
+    .social-icons a img {
+        width: 20px;
+        height: 20px;
+    }
+
+    .logout-btn {
+        width: 36px;
+        height: 36px;
+    }
+}
+
+/* ===== NAV PROGRESS BAR (Enhanced Navigation) ===== */
+.nav-progress-wrap {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -3px;
+    height: 3px;
+    pointer-events: none;
+    display: block;
+}
+
+.nav-progress {
+    width: var(--nav-scroll-progress, 0%);
+    max-width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        var(--netflix-red),
+        var(--netflix-red-light)
+    );
+    transition: width 100ms linear;
+    border-radius: 3px;
+    box-shadow: 0 6px 14px rgba(255, 0, 80, 0.08);
+}
+
+/* Scrolled navbar state */
+.navbar.scrolled {
+    padding: 0.5rem 1.5rem;
+    background: linear-gradient(
+        180deg,
+        rgba(0, 0, 0, 0.85),
+        rgba(0, 0, 0, 0.92)
+    );
+}
+
+.navbar.scrolled .social-icons a img {
+    width: 20px;
+    height: 20px;
+}
+
+.navbar.scrolled .logout-btn {
+    width: 36px;
+    height: 36px;
+}

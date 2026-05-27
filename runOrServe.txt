@@ -1,0 +1,103 @@
+Got it — if you're not using Laravel, the process for testing your app with the built-in PHP server will depend on the framework or structure of your app. However, the general approach is similar.
+
+---
+
+### ✅ General Steps to Test a PHP App with the Built-in PHP Server
+
+1. **Ensure your app is in a directory** (e.g., `~/Projects/myapp`).
+
+2. **Start the PHP built-in server** from the root of your app:
+
+   ```bash
+   php -S 127.0.0.1:8000
+   ```
+
+   This will start the server on `http://127.0.0.1:8000`.
+
+   - You can also specify a custom `index.php` file if needed:
+     ```bash
+     php -S 127.0.0.1:8000 index.php
+     ```
+
+3. **Access your app in the browser**:
+
+   Open your browser and go to:
+   ```
+   http://127.0.0.1:8000
+   ```
+
+   This should load your app's homepage or the entry point of your app.
+
+---
+
+### ✅ If You Have an `index.php` File
+
+If your app has an `index.php` file at the root of your project, the server will serve that as the entry point.
+
+---
+
+### ✅ If You're Using a Framework (e.g., Slim, Lumen, etc.)
+
+If you're using a framework like **Slim**, **Lumen**, or **Symfony**, make sure you're running the server from the correct directory and that your app is properly configured.
+
+---
+
+### ✅ Stop the Server
+
+To stop the server, press:
+```
+Ctrl + C
+```
+
+---
+
+### ✅ Testing Routes and Endpoints
+
+You can test your app's routes or API endpoints by visiting them in your browser or using tools like **Postman** or **curl**.
+
+For example:
+```bash
+curl http://127.0.0.1:8000/api/data
+```
+
+---
+
+Would you like help setting up your app's directory structure or running it with a specific framework?
+
+
+You're correct — when you run `php -S 127.0.0.1:8000` in the `blog-admin` directory, the server only serves files **from that directory**. If you're only seeing the blog interface, it's likely because:
+
+1. The `index.php` or `dashboard.php` file in your `blog-admin` directory is the entry point.
+2. Other directories (like `blog`) are not accessible because they're outside the current serving directory.
+
+**To access files from other directories:**
+
+1. **Move to the parent directory** where both `blog` and `blog-admin` are located:
+   ```bash
+   cd ~/Projects
+   ```
+
+2. **Run the server from the parent directory** so it can serve both:
+   ```bash
+   php -S 127.0.0.1:8000
+   ```
+
+   This will serve all files in the `Projects` directory and its subdirectories.
+
+3. **Access your blog** via:
+   - `http://127.0.0.1:8000/blog/index.php` (if the blog is in a subfolder)
+   - `http://127.0.0.1:8000/blog-admin/index.php` (for the admin interface)
+
+**Alternative:** If you want to keep the server running in `blog-admin`, you can:
+- Create symbolic links to the blog files in `blog-admin`, or
+- Use a reverse proxy setup, but that's more complex.
+
+**Quick fix:** Run the server from the parent directory:
+```bash
+cd ~/Projects
+php -S 127.0.0.1:8000
+```
+
+Now you should be able to access both the blog and admin interfaces.
+
+Would you like help setting up a more permanent development environment?

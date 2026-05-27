@@ -1,0 +1,40 @@
+just run the below to access admin
+
+http://127.0.0.1:8000/blog-admin/index.php
+
+You're correct — when you run `php -S 127.0.0.1:8000` in the `blog-admin` directory, the server only serves files **from that directory**. If you're only seeing the blog interface, it's likely because:
+
+1. The `index.php` or `dashboard.php` file in your `blog-admin` directory is the entry point.
+2. Other directories (like `blog`) are not accessible because they're outside the current serving directory.
+
+**To access files from other directories:**
+
+1. **Move to the parent directory** where both `blog` and `blog-admin` are located:
+   ```bash
+   cd ~/Projects
+   ```
+
+2. **Run the server from the parent directory** so it can serve both:
+   ```bash
+   php -S 127.0.0.1:8000
+   ```
+
+   This will serve all files in the `Projects` directory and its subdirectories.
+
+3. **Access your blog** via:
+   - `http://127.0.0.1:8000/blog/index.php` (if the blog is in a subfolder)
+   - `http://127.0.0.1:8000/blog-admin/index.php` (for the admin interface)
+
+**Alternative:** If you want to keep the server running in `blog-admin`, you can:
+- Create symbolic links to the blog files in `blog-admin`, or
+- Use a reverse proxy setup, but that's more complex.
+
+**Quick fix:** Run the server from the parent directory:
+```bash
+cd ~/Projects
+php -S 127.0.0.1:8000
+```
+
+Now you should be able to access both the blog and admin interfaces.
+
+Would you like help setting up a more permanent development environment?
