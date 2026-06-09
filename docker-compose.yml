@@ -1,0 +1,22 @@
+services:
+  db:
+    image: postgres:15
+    container_name: blite-postgres
+    environment:
+      POSTGRES_DB: blite_db
+      POSTGRES_USER: blite_user
+      POSTGRES_PASSWORD: bliss254
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init_complete.sql:/docker-entrypoint-initdb.d/init.sql   # auto-run on first start
+  # If you also want to containerize PHP/Apache:
+  # web:
+  #   build: .
+  #   ports:
+  #     - "80:80"
+  #   depends_on:
+  #     - db
+volumes:
+  postgres_data:
