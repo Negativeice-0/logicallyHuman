@@ -1,6 +1,12 @@
 <?php
-require "connection.php";
-requireAuth();
+session_start();
+require_once "../config.php";
+
+// If not logged in or not admin, redirect to admin login page
+if (!isset($_SESSION["user_id"]) || !isset($_SESSION["role"]) || $_SESSION["role"] !== "admin") {
+    header("Location: index.php");
+    exit();
+}
 
 $db = getDB();
 $stats = [];
@@ -42,7 +48,7 @@ $stats["recent_photos"] = $stmt->fetch(PDO::FETCH_ASSOC)["count"];
     <div class="container">
         <div class="dashboard-hero">
             <h1>Welcome, <?php echo htmlspecialchars(
-                $_SESSION["admin_email"],
+                $_SESSION["username"],
             ); ?>!</h1>
             <p>Admin Control Center - Manage your blog efficiently</p>
         </div>

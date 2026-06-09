@@ -1,34 +1,39 @@
 <?php
-require "connection.php";
+session_start();
+require_once "../config.php";   // go up one level to root config
 
-if (isset($_SESSION["admin_id"])) {
+// If already logged in as admin, go to dashboard
+if (isset($_SESSION["user_id"]) && isset($_SESSION["role"]) && $_SESSION["role"] === "admin") {
     header("Location: dashboard.php");
     exit();
 }
 
 $error = "";
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $email = $_POST["email"] ?? "";
+    $email = trim($_POST["email"] ?? "");
     $password = $_POST["password"] ?? "";
 
     if (!empty($email) && !empty($password)) {
-        try {
-            $db = getDB();
-            $stmt = $db->prepare("SELECT * FROM users WHERE email = :email");
-            $stmt->execute([":email" => $email]);
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        $db = getDB();
+        $stmt = $db->prepare("SELECT * FROM users WHERE email = :email");
+        $stmt->execute([":email" => $email]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if ($user && $password == $user["password"]) {
-                $_SESSION["admin_id"] = $user["id"];
-                $_SESSION["admin_email"] = $user["email"];
-                $_SESSION["role"] = $user["role"] ?? "user";
-                header("Location: dashboard.php");
-                exit();
-            } else {
-                $error = "Invalid email or password.";
-            }
-        } catch (PDOException $e) {
-            $error = "Database error.";
+        // Verify password and role must be 'admin'
+        if ($user && password_verify($password, $user["password"]) && $user["role"] === "admin") {
+            $_SESSION["user_id"] = $user["id"];
+            $_SESSION["username"] = $user["username"];
+            $_SESSION["email"] = $user["email"];
+            $_SESSION["role"] = $user["role"];
+
+            // Update last login
+            $update = $db->prepare("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?");
+            $update->execute([$user["id"]]);
+
+            header("Location: dashboard.php");
+            exit();
+        } else {
+            $error = "Invalid email or password (admin only).";
         }
     } else {
         $error = "Please fill in all fields.";
@@ -49,9 +54,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         </div>
 
         <?php if ($error): ?>
-            <div class="error-message"><?php echo htmlspecialchars(
-                $error,
-            ); ?></div>
+            <div class="error-message"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
 
         <form method="POST" class="admin-login-form">

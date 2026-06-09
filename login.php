@@ -15,19 +15,23 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user["password"])) {
-            $_SESSION["user_id"] = $user["id"];
-            $_SESSION["username"] = $user["username"];
-            $_SESSION["email"] = $user["email"];
-            $_SESSION["role"] = $user["role"];
+            // --- REJECT ADMIN LOGINS ---
+            if ($user["role"] === "admin") {
+                $error = "Admin accounts cannot log in here. Please use the <a href='/blog-admin/'>admin portal</a>.";
+            } else {
+                // Regular user – set session and redirect to home.php
+                $_SESSION["user_id"] = $user["id"];
+                $_SESSION["username"] = $user["username"];
+                $_SESSION["email"] = $user["email"];
+                $_SESSION["role"] = $user["role"];
 
-            // Update last login
-            $updateStmt = $db->prepare(
-                "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = :user_id",
-            );
-            $updateStmt->execute([":user_id" => $user["id"]]);
+                //UPDATE LAST LOGIN
+                $updateStmt = $db->prepare("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = :user_id");
+                $updateStmt->execute([":user_id" => $user["id"]]);
 
-            header("Location: home.php");
-            exit();
+                header("Location: home.php");
+                exit();
+            }
         } else {
             $error = "Invalid email or password";
         }

@@ -1,12 +1,12 @@
 <?php
-require "connection.php";
+require_once "../config.php";
 requireAuth();
 
 $message = "";
 $error = "";
 
-// Handle photo upload
-if (isset($_POST["addphoto"])) {
+// --- POST handling: upload or delete ---
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["addphoto"])) {
     $title = $_POST["title"] ?? "";
     $description = $_POST["description"] ?? "";
     $photo = $_FILES["photo"];
@@ -17,27 +17,16 @@ if (isset($_POST["addphoto"])) {
         $error = "File upload error: " . $photo["error"];
     } else {
         // Validate file type
-        $allowed_types = [
-            "image/jpeg",
-            "image/jpg",
-            "image/png",
-            "image/gif",
-            "image/webp",
-        ];
+        $allowed_types = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
         $file_type = mime_content_type($photo["tmp_name"]);
 
         if (!in_array($file_type, $allowed_types)) {
-            $error =
-                "Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed.";
+            $error = "Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed.";
         } else {
-            // Get original filename
             $original_filename = basename($photo["name"]);
             $file_extension = pathinfo($original_filename, PATHINFO_EXTENSION);
-
-            // Generate unique filename
             $unique_filename = uniqid("photo_", true) . "." . $file_extension;
 
-            // Create uploads directory if it doesn't exist
             $upload_dir = "uploads/";
             if (!is_dir($upload_dir)) {
                 mkdir($upload_dir, 0755, true);
@@ -48,50 +37,73 @@ if (isset($_POST["addphoto"])) {
             if (move_uploaded_file($photo["tmp_name"], $target_file)) {
                 $db = getDB();
 
-                // Insert with all required columns from your database
-                $stmt = $db->prepare(
-                    "INSERT INTO photos (title, description, filename, filepath, url) VALUES (:title, :description, :filename, :filepath, :url)",
-                );
-                $stmt->execute([
-                    ":title" => $title,
-                    ":description" => $description,
-                    ":filename" => $unique_filename, // filename column
-                    ":filepath" => $target_file, // filepath column
-                    ":url" => $target_file, // url column
-                ]);
-
-                $message = "Photo uploaded successfully!";
+                try {
+                    $stmt = $db->prepare(
+                        "INSERT INTO photos (title, description, filename, filepath, url) 
+                         VALUES (:title, :description, :filename, :filepath, :url)"
+                    );
+                    $stmt->execute([
+                        ":title" => $title,
+                        ":description" => $description,
+                        ":filename" => $unique_filename,
+                        ":filepath" => $target_file,
+                        ":url" => $target_file,
+                    ]);
+                    $message = "Photo uploaded successfully!";
+                } catch (PDOException $e) {
+                    // Duplicate filename? (if you added unique constraint)
+                    if ($e->errorInfo[1] == 23505) { // unique violation code
+                        $error = "A photo with this filename already exists.";
+                        // Delete the uploaded file because it won't be used
+                        if (file_exists($target_file)) unlink($target_file);
+                    } else {
+                        $error = "Database error: " . $e->getMessage();
+                    }
+                }
             } else {
                 $error = "Failed to upload file. Check directory permissions.";
             }
         }
     }
+
+    // --- PRG: redirect to clear POST data ---
+    $redirect_url = "photo.php";
+    if ($message) $redirect_url .= "?upload=success";
+    if ($error)   $redirect_url .= "?error=" . urlencode($error);
+    header("Location: " . $redirect_url);
+    exit();
 }
 
-// Handle delete
+// --- GET handling: delete or show messages ---
 if (isset($_GET["delete_id"])) {
     $photo_id = $_GET["delete_id"];
     $db = getDB();
 
-    // Get photo URL first
     $stmt = $db->prepare("SELECT url FROM photos WHERE id = :id");
     $stmt->execute([":id" => $photo_id]);
     $photo = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($photo) {
-        // Delete file from server
         if (file_exists($photo["url"])) {
             unlink($photo["url"]);
         }
-
-        // Delete from database
         $stmt = $db->prepare("DELETE FROM photos WHERE id = :id");
         $stmt->execute([":id" => $photo_id]);
         $message = "Photo deleted successfully!";
     }
+    header("Location: photo.php");
+    exit();
 }
 
-// Get all photos
+// Check for flash messages from redirect
+if (isset($_GET["upload"])) {
+    $message = "Photo uploaded successfully!";
+}
+if (isset($_GET["error"])) {
+    $error = urldecode($_GET["error"]);
+}
+
+// Fetch all photos for display
 $db = getDB();
 $stmt = $db->query("SELECT * FROM photos ORDER BY created_at DESC");
 $photos = $stmt->fetchAll(PDO::FETCH_ASSOC);

@@ -9,6 +9,8 @@ if (!isset($_SESSION["user_id"])) {
 }
 
 // NEW: Show admin welcome message if this is the first login as admin
+// will switch to welcome user later, moved all admin logic to admin directory
+// for better separation of concerns
 $show_admin_welcome = false;
 if (isset($_SESSION["admin_welcome"]) && $_SESSION["admin_welcome"] === true) {
     $show_admin_welcome = true;
